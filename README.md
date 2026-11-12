@@ -49,6 +49,7 @@ Everything lives in the EllesmereUI options, and both the dock and the restock b
 
 ## Notes
 
+- For timers and reminders when your poisons wear off, use the **AuraBuff Reminders** module that comes with EllesmereUI.
 - Translated into German, French, Spanish, Italian, Brazilian Portuguese, Russian, Korean and Chinese (Simplified and Traditional). It follows EllesmereUI's language setting, and poison names match the game's when EllesmereUI shows your client's language.
 - The flyout can't open in combat, because the game blocks it. Prepare your weapons before the pull.
 - `/epoisons debug` lists what the dock sees in your bags and on each weapon, which helps with bug reports.
