@@ -8,6 +8,7 @@
 ## Notes: A movable button that lists your poisons, stones and oils. Left-click an item for your main hand, right-click for your off hand. Settings and position live in EllesmereUI. At poison vendors it restocks poisons to your targets.
 ## Dependencies: EllesmereUI
 ## SavedVariablesPerCharacter: EllesmerePoisonsDB
+## X-Curse-Project-ID: 1800818
 
 Restock.lua
 EllesmerePoisons.lua
