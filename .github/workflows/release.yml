@@ -31,7 +31,7 @@ jobs:
       - name: Package and publish to CurseForge and GitHub Releases
         uses: BigWigsMods/packager@01e8631a69c69d7654c788d152630d5fed9e3812 # v2.7.0
         with:
-          args: ${{ github.ref_type == 'tag' && '' || '-d' }}
+          args: ${{ github.ref_type != 'tag' && '-d' || '' }}
         env:
           CF_API_KEY: ${{ secrets.CF_API_KEY }}
           GITHUB_OAUTH: ${{ secrets.GITHUB_TOKEN }}
