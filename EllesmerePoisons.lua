@@ -482,8 +482,8 @@ local function SyncBubbles()
 end
 
 -- A ring of droplets from `pool` (DROPLETS particles) bursting out of `anchor`, in color `c` at `alpha`.
--- `size` (default 1) scales its reach and droplets. Restock.lua bursts its buttons with its own pool.
-local function Burst(pool, anchor, c, alpha, size)
+-- `size` (default 1) scales its reach and droplets; `x`, `y` offset its center. Restock.lua bursts its buttons with its own pool.
+local function Burst(pool, anchor, c, alpha, size, x, y)
     size = size or 1
     local reach = anchor:GetWidth() * 0.9 * size
     for i = 1, DROPLETS do
@@ -491,7 +491,7 @@ local function Burst(pool, anchor, c, alpha, size)
         local angle = (i / DROPLETS + math.random() * 0.05) * 2 * math.pi
         local dist = reach * (0.7 + math.random() * 0.5)
         f:ClearAllPoints()
-        f:SetPoint("CENTER", anchor, "CENTER")
+        f:SetPoint("CENTER", anchor, "CENTER", x or 0, y or 0)
         f.ag:Stop()
         f.tex:SetVertexColor(c.r, c.g, c.b)
         f.tex:SetAlpha(alpha)
@@ -508,10 +508,33 @@ local function Burst(pool, anchor, c, alpha, size)
     end
 end
 
--- A ring of droplets bursting out of the button.
-local function Splash(kind)
+-- A ring of droplets bursting out of the applied item's flyout icon, else out of an icon of its type (Highest Rank
+-- Only lists one rank), else out of the button. It is pinned to the button at the icon's spot, so a flyout closing
+-- during the burst (Close After Use, Hide Delay) leaves it where it began.
+local function Splash(itemID)
     if not Get("fx") or Get("splashAlpha") <= 0 then return end
-    Burst(fx.droplets, main, Get(kind == "stone" and "sparkleColor" or "bubbleColor"), Get("splashAlpha"))
+    local group, from = GROUP_OF_ITEM[itemID], nil
+    if target == 1 then
+        for i = 1, shown do
+            local b = buttons[i]
+            if b.itemID == itemID then
+                from = b
+                break
+            elseif not from and GROUP_OF_ITEM[b.itemID] == group then
+                from = b
+            end
+        end
+    end
+    local c, alpha = Get(group and group.kind == "stone" and "sparkleColor" or "bubbleColor"), Get("splashAlpha")
+    local fx0, fy0
+    if from then fx0, fy0 = from:GetCenter() end
+    local mx, my = main:GetCenter()
+    if fx0 and mx then
+        local k = from:GetEffectiveScale() / main:GetEffectiveScale()   -- the Grow animation scales the flyout
+        Burst(fx.droplets, main, c, alpha, from:GetWidth() * k / main:GetWidth(), fx0 * k - mx, fy0 * k - my)
+    else
+        Burst(fx.droplets, main, c, alpha)
+    end
 end
 
 local function CreateFx()
@@ -818,7 +841,7 @@ local function OnApplied(itemID, castGUID)
     local icon = C_Item.GetItemIconByID(itemID)
     if icon then db.lastIcon = icon end
     if Get("mainIcon") == "last" and icon then main.icon:SetTexture(icon) end
-    Splash(GROUP_OF_ITEM[itemID] and GROUP_OF_ITEM[itemID].kind)
+    Splash(itemID)
     if Get("closeOnUse") and target == 1 and castGUID and castGUID == dockCastGUID then
         dockCastGUID = nil
         if InCombatLockdown() then closeAfterCombat = true else CloseAfterUse() end
