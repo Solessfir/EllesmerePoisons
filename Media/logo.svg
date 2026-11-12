@@ -1,0 +1,46 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="512" height="512" viewBox="0 0 512 512">
+  <defs>
+    <radialGradient id="bg" cx="50%" cy="45%" r="70%">
+      <stop offset="0" stop-color="#16201e"/>
+      <stop offset="1" stop-color="#050707"/>
+    </radialGradient>
+    <radialGradient id="glow" cx="50%" cy="62%" r="45%">
+      <stop offset="0" stop-color="#73ff40" stop-opacity=".38"/>
+      <stop offset="1" stop-color="#73ff40" stop-opacity="0"/>
+    </radialGradient>
+    <linearGradient id="liquid" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#9dff6a"/>
+      <stop offset=".5" stop-color="#4fd42a"/>
+      <stop offset="1" stop-color="#1f7a14"/>
+    </linearGradient>
+    <linearGradient id="ring" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#3ff0c0"/>
+      <stop offset="1" stop-color="#0a9c76"/>
+    </linearGradient>
+    <clipPath id="body"><circle cx="256" cy="318" r="112"/></clipPath>
+  </defs>
+  <rect width="512" height="512" fill="url(#bg)"/>
+  <circle cx="256" cy="256" r="226" fill="none" stroke="url(#ring)" stroke-width="16"/>
+  <circle cx="256" cy="256" r="206" fill="none" stroke="#0cd29f" stroke-opacity=".18" stroke-width="3"/>
+  <circle cx="256" cy="300" r="190" fill="url(#glow)"/>
+
+  <!-- liquid -->
+  <g clip-path="url(#body)">
+    <rect x="130" y="200" width="252" height="240" fill="#0b1a10" fill-opacity=".55"/>
+    <path d="M130 300 C 170 282, 200 318, 240 300 S 310 282, 382 302 L 382 440 L 130 440 Z" fill="url(#liquid)"/>
+    <circle cx="214" cy="352" r="11" fill="#d8ffbf" fill-opacity=".75"/>
+    <circle cx="282" cy="384" r="8" fill="#d8ffbf" fill-opacity=".6"/>
+    <circle cx="300" cy="334" r="14" fill="#d8ffbf" fill-opacity=".55"/>
+    <circle cx="246" cy="404" r="6" fill="#d8ffbf" fill-opacity=".6"/>
+    <ellipse cx="208" cy="262" rx="20" ry="40" transform="rotate(35 208 262)" fill="#ffffff" fill-opacity=".14"/>
+  </g>
+
+  <!-- glass -->
+  <path d="M226 158 L226 214 A112 112 0 1 0 286 214 L286 158" fill="none" stroke="#e9f7f2" stroke-opacity=".85" stroke-width="11" stroke-linejoin="round"/>
+  <rect x="212" y="146" width="88" height="16" rx="8" fill="#e9f7f2" fill-opacity=".9"/>
+
+  <!-- rising bubbles -->
+  <circle cx="242" cy="104" r="12" fill="#73ff40" fill-opacity=".9"/>
+  <circle cx="276" cy="74" r="8" fill="#73ff40" fill-opacity=".75"/>
+  <circle cx="250" cy="48" r="5" fill="#73ff40" fill-opacity=".55"/>
+</svg>
