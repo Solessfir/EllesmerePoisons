@@ -30,8 +30,8 @@ At a poison vendor, buttons appear beside the merchant window, one for each pois
 Everything lives in the EllesmereUI options, and both the dock and the restock bar move in **Unlock Mode**.
 
 **Dock**
-- **Poisons, stones and oils:** order, and which ones to show
 - **General:** Enable, Hide When None in Bags, Highest Rank Only, Tooltips (Full, Name Only, Off), Icon Shape (Cropped, Square, Circle, Curved Square, Diamond, Hexagon, Portrait, Shield)
+- **Poisons, stones and oils:** order, and which ones to show
 - **Button:** Button Icon (Poisons Skill, Envenomed Blade, Dual Wield, Sharpening Stone, Last Applied, Custom), Button Size, Opacity, Show Only on Mouseover
 - **Flyout:** Flyout Direction (Up, Down, Left, Right), Item Size, Spacing, Flyout Background
 - **Behavior:** Open On (Hover, Click), After a Click (Stay Open, Hide After Leaving), Open Delay, Hide Delay, Close After Use
@@ -41,11 +41,12 @@ Everything lives in the EllesmereUI options, and both the dock and the restock b
 - **Effects:** Enable Effects, Effects Only on Hover, Effects Only When Applied, Applied On (Any Weapon, Main Hand Only), Splash Opacity, Bubbles Color, Sparkles Color
 
 **Restock**
+- **Enable**
 - **Buttons:** order, and which ones to show
+- **Targets:** a target for each poison you have learned, plus Flash Powder
 - **Layout:** Layout (vertical or horizontal), Icon Shape, Button Size, Spacing, Background
 - **Numbers:** Number Size, Number Outline, Target Color
 - **Effects:** Crafting Effects (bubbles while a poison crafts, droplets for each one made)
-- **Targets:** a target for each poison you have learned, plus Flash Powder
 
 ## Notes
 

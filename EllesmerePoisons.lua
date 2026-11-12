@@ -1262,13 +1262,6 @@ local function BuildPage(_, parent, yOffset)
             end }
     end
 
-    Header("POISONS, STONES AND OILS")
-    if EUI.IsSearchPrebuild and EUI.IsSearchPrebuild() then
-        y = y - EDITOR_HEIGHT
-    else
-        y = y - BuildEditor(parent, y)
-    end
-
     Header("GENERAL")
     Row(Toggle("Enable", "enabled", "Shows the dock. Move it in EllesmereUI's Unlock Mode."),
         Toggle("Hide When None in Bags", "hideEmpty", "Hides the button while you carry no poisons, stones or oils."))
@@ -1276,6 +1269,13 @@ local function BuildPage(_, parent, yOffset)
         Dropdown("Tooltips", "tooltip", TOOLTIPS, TOOLTIP_ORDER,
             "Full: the item's tooltip. Name Only: just the item's name."))
     Row(Dropdown("Icon Shape", "shape", SHAPES, SHAPE_ORDER, "The shape of the button and every flyout icon."), nil)
+
+    Header("POISONS, STONES AND OILS")
+    if EUI.IsSearchPrebuild and EUI.IsSearchPrebuild() then
+        y = y - EDITOR_HEIGHT
+    else
+        y = y - BuildEditor(parent, y)
+    end
 
     Header("BUTTON")
     local notCustom = function() return Get("mainIcon") ~= "custom" end

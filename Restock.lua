@@ -848,14 +848,7 @@ end
 local function BuildPage(_, parent, yOffset)
     local W = EUI.Widgets
     local y = yOffset
-    local _, h = W:SectionHeader(parent, "BUTTONS", y)
-    y = y - h
-    if EUI.IsSearchPrebuild and EUI.IsSearchPrebuild() then
-        y = y - ns.EDITOR_HEIGHT
-    else
-        y = y - Editor().Build(parent, y)
-    end
-    _, h = W:SectionHeader(parent, "RESTOCK AT VENDORS", y)
+    local _, h = W:SectionHeader(parent, "RESTOCK AT VENDORS", y)
     y = y - h
     local off = function() return R.off == true end
     local function Slider(name)
@@ -876,6 +869,28 @@ local function BuildPage(_, parent, yOffset)
             UpdateBar()
             EUI:RefreshPage()
         end }, nil)
+    y = y - h
+    _, h = W:SectionHeader(parent, "BUTTONS", y)
+    y = y - h
+    if EUI.IsSearchPrebuild and EUI.IsSearchPrebuild() then
+        y = y - ns.EDITOR_HEIGHT
+    else
+        y = y - Editor().Build(parent, y)
+    end
+    -- Poisons are crafted and Flash Powder is bought, so each gets its own section.
+    _, h = W:SectionHeader(parent, "POISON TARGETS", y)
+    y = y - h
+    local poisons = {}
+    for _, name in ipairs(TYPES) do
+        if name ~= FLASH and Known(name) then poisons[#poisons + 1] = name end
+    end
+    for i = 1, #poisons, 2 do
+        _, h = W:DualRow(parent, y, Slider(poisons[i]), poisons[i + 1] and Slider(poisons[i + 1]) or nil)
+        y = y - h
+    end
+    _, h = W:SectionHeader(parent, "REAGENT TARGETS", y)
+    y = y - h
+    _, h = W:DualRow(parent, y, Slider(FLASH), nil)
     y = y - h
 
     local function SetLook(key, v)
@@ -931,21 +946,6 @@ local function BuildPage(_, parent, yOffset)
               return c.r, c.g, c.b, c.a or 1
           end,
           setValue = function(r, g, b, a) SetLook("splashColor", { r = r, g = g, b = b, a = a or 1 }) end })
-    -- Poisons are crafted and Flash Powder is bought, so each gets its own section.
-    _, h = W:SectionHeader(parent, "POISON TARGETS", y)
-    y = y - h
-    local poisons = {}
-    for _, name in ipairs(TYPES) do
-        if name ~= FLASH and Known(name) then poisons[#poisons + 1] = name end
-    end
-    for i = 1, #poisons, 2 do
-        _, h = W:DualRow(parent, y, Slider(poisons[i]), poisons[i + 1] and Slider(poisons[i + 1]) or nil)
-        y = y - h
-    end
-    _, h = W:SectionHeader(parent, "REAGENT TARGETS", y)
-    y = y - h
-    _, h = W:DualRow(parent, y, Slider(FLASH), nil)
-    y = y - h
     return math.abs(y)
 end
 
