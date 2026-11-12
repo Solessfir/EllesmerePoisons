@@ -3,3 +3,4 @@ package-as: EllesmerePoisons
 ignore:
     - Media
     - README.md
+    - tests

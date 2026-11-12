@@ -4,6 +4,7 @@
 local ADDON, ns = ...
 if select(2, UnitClass("player")) ~= "ROGUE" then return end
 local EUI = _G.EllesmereUI
+local L, Lf = EUI.L, EUI.Lf   -- type names are English keys; L shows them in the game's language
 
 local POISONS_SKILL = 40   -- the Poisons profession's skill line
 local DEATHWEED = 5173     -- only poison vendors sell it
@@ -32,7 +33,7 @@ local function LearnedChanged()
     EUI:RefreshPage(true)   -- eUI defers this while the panel is closed
 end
 
-local function Say(msg) print("|cff74ff40Ellesmere Poisons|r " .. msg) end
+local function Say(msg) print("|cff74ff40Ellesmere Poisons:|r " .. msg) end
 
 -- Everything Restock saves, in one table of EllesmerePoisonsDB so General's reset can keep it whole.
 -- off: the Enable toggle unticked. targets: type name -> how many to keep. pos: the bar's Unlock Mode spot.
@@ -174,7 +175,7 @@ local function WithWindow(fn)
             C_Timer.After(WAIT_STEP, wait)
         else
             opening = false
-            Say("could not open the Poisons window.")
+            Say(L("Could not open the Poisons window."))
             Relabel()
         end
     end
@@ -195,16 +196,19 @@ end
 -- Buys nothing and returns the reason when the vendor is gone, lacks one of them, or you lack the gold.
 -- ponytail: bag space and limited stock are not checked; such a purchase just never arrives (the job times out).
 local function BuyAll(wants)
-    if not vendorOpen then return "the vendor closed" end
+    if not vendorOpen then return L("The vendor closed.") end
     local plan, cost = {}, 0
     for id, count in pairs(wants) do
         local i = MerchantIndex(id)
         local info = i and C_MerchantFrame.GetItemInfo(i)
-        if not info then return "this vendor does not sell " .. (C_Item.GetItemNameByID(id) or "a reagent") end
+        if not info then
+            local item = C_Item.GetItemNameByID(id)
+            return item and Lf("This vendor does not sell %s.", item) or L("This vendor does not sell a reagent it needs.")
+        end
         cost = cost + info.price * count / math.max(info.stackCount, 1)
         plan[#plan + 1] = { i, count }
     end
-    if cost > GetMoney() then return "not enough gold" end
+    if cost > GetMoney() then return L("Not enough gold.") end
     for _, p in ipairs(plan) do
         local i, count = p[1], p[2]
         local lot = math.max(GetMerchantItemMaxStack(i) or 1, 1)
@@ -249,7 +253,8 @@ local function Settle()
     C_Timer.After(SETTLE + WAIT_STEP, function() Relabel() end)
 end
 
-local function WaitForClick(name, why)
+-- `why` alone when the click cannot craft yet; `whyCraft` (the same news, asking for the click) once it can.
+local function WaitForClick(name, why, whyCraft)
     if not vendorOpen then return end   -- the bar is gone with the vendor; the bought reagents stay for the next visit
     -- A glow promises the click crafts, which needs the window; closed, the next click reopens it first.
     if not WindowReady() or unlocked then
@@ -258,7 +263,7 @@ local function WaitForClick(name, why)
         return
     end
     ready[name] = true
-    Say(why .. " Click " .. name .. " again to craft.")
+    Say(whyCraft)
     Relabel()
 end
 
@@ -267,7 +272,8 @@ local function CheckJob()
     if not (job and Arrived(job)) then return end
     local name = job.name
     job = nil
-    if name ~= FLASH then WaitForClick(name, "Reagents for " .. name .. " are in.") end
+    if name ~= FLASH then WaitForClick(name, Lf("Reagents for %s are in.", L(name)),
+        Lf("Reagents for %s are in. Click %s again to craft.", L(name), L(name))) end
 end
 
 -- Only works inside a click (see `ready`).
@@ -287,7 +293,7 @@ local function Craft(name, recipe, casts)
             return
         end
         crafting = false
-        Say("the " .. name .. " craft did not start. Click it again to craft.")
+        Say(Lf("The %s craft did not start. Click it again to craft.", L(name)))
         Relabel()
     end
     C_Timer.After(START_WAIT, check)
@@ -322,21 +328,21 @@ end
 -- ponytail: one purchase at a time; clicks wait until it lands. A queue would chain them.
 local function Restock(name, inClick)
     if Target(name) == 0 then
-        Say(name .. " has no target; set one with the mouse wheel.")
+        Say(Lf("%s has no target. Set one with the mouse wheel.", L(name)))
         return
     end
     if name ~= FLASH and not ranks[name] then
-        Say(name .. " is not learned.")
+        Say(Lf("%s is not learned.", L(name)))
         return
     end
     local missing = Target(name) - Have(name)
     if missing <= 0 then
-        Say(name .. " is already stocked.")
+        Say(Lf("%s is already stocked.", L(name)))
         return
     end
     local wants, need, recipe, casts = Plan(name, missing)
     if not wants then
-        Say("could not read the " .. name .. " recipe.")
+        Say(Lf("Could not read the %s recipe.", L(name)))
         return
     end
     if not next(wants) and recipe then   -- Flash Powder always has something to buy
@@ -345,13 +351,13 @@ local function Restock(name, inClick)
         if inClick then
             Craft(name, recipe, casts)
         else
-            WaitForClick(name, "The Poisons window is open.")
+            WaitForClick(name, L("The Poisons window is open."), Lf("The Poisons window is open. Click %s again to craft.", L(name)))
         end
         return
     end
     local why = BuyAll(wants)
     if why then
-        Say(why .. ".")
+        Say(why)
         return
     end
     -- Shows what the reagents were bought for. Blizzard's UI does the selecting, so nothing is tainted.
@@ -365,7 +371,7 @@ local function Restock(name, inClick)
             return
         end
         job = nil
-        if name ~= FLASH then Say("the purchase for " .. name .. " did not arrive.") end
+        if name ~= FLASH then Say(Lf("The purchase for %s did not arrive.", L(name))) end
         Relabel()
     end)
 end
@@ -381,7 +387,7 @@ local function OnClick(self, button)
     elseif unlocked then
         return   -- a preview: away from a vendor there is nothing to buy
     elseif Busy() then
-        Say("still restocking.")
+        Say(L("Still restocking."))
     elseif self.name == FLASH or Target(self.name) == 0 or Have(self.name) >= Target(self.name) or WindowReady() then
         Restock(self.name, true)
     else
@@ -410,38 +416,38 @@ end
 
 local function OnEnter(self)
     GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
-    GameTooltip:SetText(self.name, 1, 1, 1)
+    GameTooltip:SetText(L(self.name), 1, 1, 1)
     local r = ranks[self.name]
     local makes = r and C_Item.GetItemNameByID(r.item)
-    if makes then GameTooltip:AddLine("Makes " .. makes, 0.6, 0.85, 1) end
-    GameTooltip:AddLine(("Have %d of %d"):format(Have(self.name), Target(self.name)), 1, 0.82, 0)
+    if makes then GameTooltip:AddLine(Lf("Makes %s", makes), 0.6, 0.85, 1) end
+    GameTooltip:AddLine(Lf("Have %d of %d", Have(self.name), Target(self.name)), 1, 0.82, 0)
     local missing = Target(self.name) - Have(self.name)
     -- The same order OnClick and Restock decide in, so the line says what a click would do.
     if unlocked then
-        GameTooltip:AddLine("Preview while Unlock Mode is open", 0.7, 0.7, 0.7)
+        GameTooltip:AddLine(L("Preview while Unlock Mode is open"), 0.7, 0.7, 0.7)
     elseif Busy() then
-        GameTooltip:AddLine("Restocking...", 0.7, 0.7, 0.7)
+        GameTooltip:AddLine(L("Restocking..."), 0.7, 0.7, 0.7)
     elseif Target(self.name) == 0 then
-        GameTooltip:AddLine("No target yet", 1, 0.2, 0.33)
+        GameTooltip:AddLine(L("No target yet"), 1, 0.2, 0.33)
     elseif missing <= 0 then
-        GameTooltip:AddLine("Stocked", 0, 0.78, 0.13)
+        GameTooltip:AddLine(L("Stocked"), 0, 0.78, 0.13)
     elseif self.name == FLASH then
-        GameTooltip:AddLine("Click to buy up to the target", 0.7, 0.7, 0.7)
+        GameTooltip:AddLine(L("Click to buy up to the target"), 0.7, 0.7, 0.7)
     else
         -- The recipe may be unreadable before the Poisons window first opened; the plain line covers that.
         local wants = ranks[self.name] and Plan(self.name, missing)
         if not wants then
-            GameTooltip:AddLine("Click to restock up to the target", 0.7, 0.7, 0.7)
+            GameTooltip:AddLine(L("Click to restock up to the target"), 0.7, 0.7, 0.7)
         elseif next(wants) then
-            GameTooltip:AddLine("Click to buy reagents", 0.7, 0.7, 0.7)
+            GameTooltip:AddLine(L("Click to buy reagents"), 0.7, 0.7, 0.7)
         elseif WindowReady() then
-            GameTooltip:AddLine("Click to craft", 0.45, 1, 0.25)
+            GameTooltip:AddLine(L("Click to craft"), 0.45, 1, 0.25)
         else
             -- Crafting works only from a click with the Poisons window open, so the first click opens it.
-            GameTooltip:AddLine("Click to open the Poisons window", 0.7, 0.7, 0.7)
+            GameTooltip:AddLine(L("Click to open the Poisons window"), 0.7, 0.7, 0.7)
         end
     end
-    GameTooltip:AddLine("Mouse wheel to change the target, right-click for settings", 0.7, 0.7, 0.7)
+    GameTooltip:AddLine(L("Mouse wheel to change the target, right-click for settings"), 0.7, 0.7, 0.7)
     GameTooltip:Show()
 end
 
@@ -762,7 +768,7 @@ events:SetScript("OnEvent", function(_, event, recipeID, _, spellID)
         elseif crafting and mine and not castStarted and event == "UNIT_SPELLCAST_FAILED" then
             -- Refused before it cast (moving, cooldown): no need to wait out START_WAIT. The glow stays for another click.
             crafting = false
-            Say("the " .. craftName .. " craft did not start. Click it again to craft.")
+            Say(Lf("The %s craft did not start. Click it again to craft.", L(craftName)))
         end
         Relabel()
     elseif event == "MERCHANT_SHOW" then

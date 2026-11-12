@@ -3,6 +3,8 @@
 -- Styled through EllesmereUI's skinning API, moved in its Unlock Mode, configured on its plugin page.
 local ADDON, ns = ...
 local EUI = _G.EllesmereUI
+-- eUI translates the text its widgets show; text set here goes through its translator by hand (see Localization.lua).
+local L = EUI.L
 
 -- Default order; items lowest rank first. Item IDs follow EllesmereUIAuraBuffReminders' EABR.FV_WEAPON_BUFFS.
 -- ponytail: a hand-kept copy, since the module only exposes it as an underscore (internal) global.
@@ -58,7 +60,7 @@ local COUNT_POINTS = {
 }
 local COUNT_POINT_ORDER = { "BOTTOMRIGHT", "BOTTOMLEFT", "BOTTOM", "CENTER", "TOPRIGHT", "TOPLEFT", "TOP" }
 local COUNT_INSET = 2   -- count text distance from the icon's edge
-local OUTLINES = { NONE = "None", OUTLINE = "Outline", THICKOUTLINE = "Thick Outline", SHADOW = "Shadow" }
+local OUTLINES = { NONE = "None", OUTLINE = "Outline", THICKOUTLINE = "Thick Outline", SHADOW = "Drop Shadow" }
 local OUTLINE_ORDER = { "NONE", "OUTLINE", "THICKOUTLINE", "SHADOW" }
 local TOOLTIPS = { full = "Full", name = "Name Only", off = "Off" }
 local APPLIED_HANDS = { any = "Any Weapon", main = "Main Hand Only" }
@@ -84,7 +86,7 @@ local EASINGS = {
     inout = function(t) return t < 0.5 and 4 * t ^ 3 or 1 - (-2 * t + 2) ^ 3 / 2 end,
     back = function(t) return 1 + (BACK + 1) * (t - 1) ^ 3 + BACK * (t - 1) ^ 2 end,
 }
-local EASING_NAMES = { linear = "Linear", out = "Ease Out", ["in"] = "Ease In", inout = "Ease In Out", back = "Back" }
+local EASING_NAMES = { linear = "Linear", out = "Ease Out", ["in"] = "Ease In", inout = "Ease In Out", back = "Overshoot" }
 local EASING_ORDER = { "linear", "out", "in", "inout", "back" }
 local ICON_PATH = "Interface\\Icons\\"
 local MAIN_ICONS = {
@@ -1069,8 +1071,8 @@ local function NewEditor(spec)
         end)
         b:SetScript("OnEnter", function(self)
             GameTooltip:SetOwner(self, "ANCHOR_TOP")
-            GameTooltip:SetText(spec.label(key), 1, 1, 1)
-            if spec.isHidden(key) then GameTooltip:AddLine("Hidden", 0.6, 0.6, 0.6) end
+            GameTooltip:SetText(L(spec.label(key)), 1, 1, 1)
+            if spec.isHidden(key) then GameTooltip:AddLine(L("Hidden"), 0.6, 0.6, 0.6) end
             GameTooltip:Show()
         end)
         b:SetScript("OnLeave", GameTooltip_Hide)
@@ -1083,7 +1085,7 @@ local function NewEditor(spec)
         local list = spec.list()
         local width = #list * (EDIT_SIZE + EDIT_GAP) - EDIT_GAP
         for _, b in pairs(ed.icons) do b:Hide() end
-        ed.hint:SetText(#list > 0 and spec.hint or spec.empty)
+        ed.hint:SetText(L(#list > 0 and spec.hint or spec.empty))
         for i, key in ipairs(list) do
             local b = ed.icons[key] or Icon(key)
             local hidden = spec.isHidden(key)

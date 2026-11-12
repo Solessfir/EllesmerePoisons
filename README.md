@@ -11,6 +11,7 @@ A dock for your rogue poisons, sharpening stones and oils, built for EllesmereUI
 - Bubbles and a splash show when a poison goes on your weapons.
 - At a poison vendor, restock buttons beside the window show what you have and your target. A click buys the reagents, the next one crafts, and Flash Powder is bought straight up to its target. The mouse wheel changes a target.
 - Settings, position and the restock targets live in EllesmereUI's options and Unlock Mode.
+- Translated into German, French, Spanish, Italian, Brazilian Portuguese, Russian, Korean and Chinese (Simplified and Traditional). It follows EllesmereUI's language setting.
 
 ## Requirements
 
