@@ -35,12 +35,12 @@ end
 
 local DEFAULTS = {
     enabled = true, size = 36, itemSize = 32, spacing = 2, direction = "LEFT",
-    showCount = true, highestOnly = true, hideEmpty = false, shape = "cropped", tooltip = "full",
+    showCount = true, highestOnly = true, hideEmpty = true, shape = "cropped", tooltip = "full",
     background = false,
     openMode = "hover", clickClose = "stay", openDelay = 0, closeDelay = 0.3, closeOnUse = false,
     animation = "fadeslide", easing = "out", duration = 0.15,
-    mainIcon = "brew", customIcon = "", mouseover = false, opacity = 1, stagger = 0.04,
-    fx = true, bubbleColor = { r = 0.45, g = 1, b = 0.25, a = 0.9 }, splashAlpha = 0.9, bubblesOnHover = false, bubblesOnApplied = false, appliedHand = "any", applied = true,
+    mainIcon = select(2, UnitClass("player")) == "ROGUE" and "brew" or "stone", customIcon = "", mouseover = false, opacity = 1, stagger = 0.04,
+    fx = true, bubbleColor = { r = 0.45, g = 1, b = 0.25, a = 0.9 }, splashAlpha = 0.9, bubblesOnHover = false, bubblesOnApplied = true, appliedHand = "any", applied = true,
     sparkleColor = { r = 1, g = 0.95, b = 0.75, a = 0.9 },
     glowStyle = "static", glowSpeed = 0.8,
     countSize = 11, countPoint = "BOTTOMRIGHT", countColor = { r = 1, g = 1, b = 1 },
