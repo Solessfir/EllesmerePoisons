@@ -2,14 +2,13 @@
 ## Version: @project-version@
 ## Author: Solessfir
 ## Title: |cff0cd29fEllesmereUI|r Poisons
-## Category: |cff0cd29fEllesmere|rUI
-## Group: EllesmereUI
-## IconTexture: Interface\AddOns\EllesmereUI\media\eg-logo.tga
-## Notes: A movable button that lists your poisons, stones and oils. Left-click an item for your main hand, right-click for your off hand. Settings and position live in EllesmereUI. At poison vendors it restocks poisons to your targets.
-## Dependencies: EllesmereUI
+## IconTexture: Interface\Icons\Trade_BrewPoison
+## Notes: A movable button that lists your poisons, stones and oils. Left-click an item for your main hand, right-click for your off hand. Settings live in Options > AddOns, and on its EllesmereUI page when EllesmereUI is installed. At poison vendors it restocks poisons to your targets.
+## OptionalDeps: EllesmereUI
 ## SavedVariablesPerCharacter: EllesmerePoisonsDB
 ## X-Curse-Project-ID: 1800818
 
+Compat.lua
 Localization.lua
 Locales\deDE.lua
 Locales\esES.lua
@@ -22,3 +21,4 @@ Locales\zhCN.lua
 Locales\zhTW.lua
 Restock.lua
 EllesmerePoisons.lua
+Options.lua

@@ -26,7 +26,8 @@ def strings_in(path):
     return set(re.findall(r'"((?:[^"\\]|\\.)*)"', open(path, encoding="utf-8").read()))
 
 
-code = strings_in(os.path.join(ROOT, "EllesmerePoisons.lua")) | strings_in(os.path.join(ROOT, "Restock.lua"))
+code = strings_in(os.path.join(ROOT, "EllesmerePoisons.lua")) | strings_in(os.path.join(ROOT, "Restock.lua")) \
+    | strings_in(os.path.join(ROOT, "Options.lua"))
 errors = []
 reference = None
 for locale in LOCALES:
@@ -59,7 +60,7 @@ for locale in LOCALES:
             errors.append("%s: extra %r (not in %s)" % (locale, key, reference[0]))
 
 # Text the add-on passes to the translator itself must be translated here (eUI's widgets cover their own labels).
-for name in ("EllesmerePoisons.lua", "Restock.lua"):
+for name in ("EllesmerePoisons.lua", "Restock.lua", "Options.lua"):
     source = open(os.path.join(ROOT, name), encoding="utf-8").read()
     for key in sorted(set(re.findall(r'\bLf?\("((?:[^"\\]|\\.)*)"', source)) - reference[1]):
         errors.append("%s: %r is never translated" % (name, key))

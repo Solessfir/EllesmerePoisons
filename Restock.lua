@@ -3,7 +3,7 @@
 -- Mouse wheel changes a target, right-click opens the Restock page. Targets live on that page in EllesmereUI.
 local ADDON, ns = ...
 if select(2, UnitClass("player")) ~= "ROGUE" then return end
-local EUI = _G.EllesmereUI
+local EUI = ns.EUI
 local L, Lf = EUI.L, EUI.Lf   -- type names are English keys; L shows them in the game's language
 
 local POISONS_SKILL = 40   -- the Poisons profession's skill line
@@ -154,7 +154,7 @@ local function ReadRanks()
     return changed, learnedChanged
 end
 
-local LayoutBar
+local LayoutBar, PlaceBar, SetTarget
 local opening = false   -- a click is waiting for the Poisons window
 
 -- Runs fn once the Poisons window is ready, opening it first if needed: crafting works through it.
@@ -448,14 +448,14 @@ local function OnEnter(self)
         end
     end
     GameTooltip:AddLine(L("Mouse wheel to change the target, right-click for settings"), 0.7, 0.7, 0.7)
+    if ns.standalone then GameTooltip:AddLine(L("Shift-drag to move"), 0.7, 0.7, 0.7) end
     GameTooltip:Show()
 end
 
 local function OnMouseWheel(self, delta)
-    R.targets[self.name] = Clamp(Target(self.name) + delta * STEP, 0, MAX_TARGET)
+    SetTarget(self.name, Clamp(Target(self.name) + delta * STEP, 0, MAX_TARGET))
     Label(self)
     OnEnter(self)
-    EUI:RefreshPage()   -- the open Restock page's sliders; deferred by eUI while the panel is closed
 end
 
 local buttons = {}
@@ -521,6 +521,12 @@ local function MakeButton(name)
     b:SetScript("OnLeave", GameTooltip_Hide)
     b:EnableMouseWheel(true)
     b:SetScript("OnMouseWheel", OnMouseWheel)
+    if ns.standalone then
+        ns.ShiftDrag(b, bar, function()
+            R.pos = { point = "TOPLEFT", relPoint = "BOTTOMLEFT", x = bar:GetLeft(), y = bar:GetTop() }
+            PlaceBar()
+        end)
+    end
     buttons[name] = b
     return b
 end
@@ -593,7 +599,7 @@ end
 -- merchant window opening mid-session would otherwise carry the bar away from it.
 local pinX, pinY   -- where an unmoved bar is pinned for the Unlock session (PlaceBar), as loadPos reports it
 
-local function PlaceBar()
+PlaceBar = function()
     local p = R.pos
     bar:ClearAllPoints()
     if p then
@@ -668,6 +674,7 @@ function ns.RestockLogin()
     PlaceBar()
     LayoutBar(true)   -- Unlock Mode builds its mover from this size before the listener lays the bar out
     bar:Hide()
+    if ns.standalone then return end   -- moved by Shift-dragging a button (MakeButton)
     EUI:RegisterUnlockElements({
         EUI.MakeUnlockElement({
             key = UNLOCK_KEY, label = "Restock Buttons", group = "Poisons", order = 901, noResize = true,
@@ -807,18 +814,36 @@ end)
 
 
 
+-- Setters shared by the eUI page, the button editor, the buttons' mouse wheel and Options.lua's page.
+local function SetOn(v)
+    R.off = not v or nil
+    UpdateBar()
+    EUI:RefreshPage()
+end
+
+SetTarget = function(name, v)
+    R.targets[name] = v
+    if bar and bar:IsShown() then LayoutBar() end
+    EUI:RefreshPage()   -- the open Restock page's sliders; deferred by eUI while the panel is closed
+end
+
+local function IsHidden(name) return R.hidden and R.hidden[name] or false end
+
+local function SetHidden(name, hidden)
+    R.hidden = R.hidden or {}
+    R.hidden[name] = hidden or nil
+    Relayout()
+    RefreshEditor()
+end
+
 -- The button editor: every type, in bar order. Made on first use, since EllesmerePoisons.lua (with ns.NewEditor) loads after this file.
 local function Editor()
     editor = editor or ns.NewEditor({
         list = KnownOrdered,
         icon = ButtonIcon,
         label = function(name) return name end,
-        isHidden = function(name) return R.hidden and R.hidden[name] or false end,
-        toggle = function(name)
-            R.hidden = R.hidden or {}
-            R.hidden[name] = not R.hidden[name] or nil
-            Relayout()
-        end,
+        isHidden = IsHidden,
+        toggle = function(name) SetHidden(name, not IsHidden(name)) end,
         -- `to` is a slot among the listed types; unlearned ones keep their places in the full order.
         move = function(name, to)
             local shown = KnownOrdered()
@@ -845,6 +870,12 @@ local function Editor()
     return editor
 end
 
+local function SetLook(key, v)
+    R[key] = v
+    Relayout()
+    if key == "shape" and editor then editor.Refresh() end
+end
+
 local function BuildPage(_, parent, yOffset)
     local W = EUI.Widgets
     local y = yOffset
@@ -856,19 +887,12 @@ local function BuildPage(_, parent, yOffset)
             tooltip = name == FLASH and "How many to keep. Clicking it at a vendor buys up to this."
                 or "How many to keep. Clicking it at a poison vendor restocks up to this.",
             getValue = function() return Target(name) end,
-            setValue = function(v)
-                R.targets[name] = v
-                if bar and bar:IsShown() then LayoutBar() end
-            end }
+            setValue = function(v) SetTarget(name, v) end }
     end
     _, h = W:DualRow(parent, y, { type = "toggle", text = "Enable",
         tooltip = "Shows restock buttons beside the merchant window at poison and reagent vendors.",
         getValue = function() return not R.off end,
-        setValue = function(v)
-            R.off = not v or nil
-            UpdateBar()
-            EUI:RefreshPage()
-        end }, nil)
+        setValue = SetOn }, nil)
     y = y - h
     _, h = W:SectionHeader(parent, "BUTTONS", y)
     y = y - h
@@ -893,11 +917,6 @@ local function BuildPage(_, parent, yOffset)
     _, h = W:DualRow(parent, y, Slider(FLASH), nil)
     y = y - h
 
-    local function SetLook(key, v)
-        R[key] = v
-        Relayout()
-        if key == "shape" and editor then editor.Refresh() end
-    end
     local function LookSlider(text, key, min, max, step, tip)
         return { type = "slider", text = text, min = min, max = max, step = step or 1, tooltip = tip,
             getValue = function() return Look(key) end, setValue = function(v) SetLook(key, v) end }
@@ -964,6 +983,18 @@ end
 function ns.RestockLayout()
     if bar and bar:IsShown() then LayoutBar() end
 end
+
+-- What Options.lua builds the game's settings panel from.
+ns.Restock = {
+    TYPES = TYPES, FLASH = FLASH, STEP = STEP, MAX_TARGET = MAX_TARGET, LOOKS = LOOKS,
+    LAYOUTS = LAYOUTS, LAYOUT_ORDER = LAYOUT_ORDER, Look = Look, SetLook = SetLook, Target = Target,
+    IsOn = function() return not R.off end, SetOn = SetOn, SetTarget = SetTarget,
+    IsHidden = IsHidden, SetHidden = SetHidden,
+    ResetPosition = function()
+        R.pos = nil
+        if bar then PlaceBar() end
+    end,
+}
 
 ns.RestockModule = {
     key = "Restock", title = "Restock", onReset = Reset,

@@ -2,7 +2,7 @@
 -- Left-click applies to the main hand, right-click to the off hand.
 -- Styled through EllesmereUI's skinning API, moved in its Unlock Mode, configured on its plugin page.
 local ADDON, ns = ...
-local EUI = _G.EllesmereUI
+local EUI = ns.EUI
 -- eUI translates the text its widgets show; text set here goes through its translator by hand (see Localization.lua).
 local L = EUI.L
 
@@ -53,7 +53,9 @@ local SHAPES = {
     none = "None", cropped = "Cropped", square = "Square", circle = "Circle", csquare = "Curved Square",
     diamond = "Diamond", hexagon = "Hexagon", portrait = "Portrait", shield = "Shield",
 }
-local SHAPE_ORDER = { "none", "cropped", "---", "square", "circle", "csquare", "diamond", "hexagon", "portrait", "shield" }
+-- Standalone there is no shape art, so only the unmasked shapes are offered.
+local SHAPE_ORDER = ns.standalone and { "none", "cropped" }
+    or { "none", "cropped", "---", "square", "circle", "csquare", "diamond", "hexagon", "portrait", "shield" }
 local COUNT_POINTS = {
     BOTTOMRIGHT = "Bottom Right", BOTTOMLEFT = "Bottom Left", BOTTOM = "Bottom", CENTER = "Center",
     TOPRIGHT = "Top Right", TOPLEFT = "Top Left", TOP = "Top",
@@ -280,7 +282,7 @@ local function PlaceFlyout(back)
 end
 
 -- Open/close state, animated by the main button's OnUpdate.
--- The flyout holds secure buttons, so it is only shown, hidden or moved out of combat; a fight freezes it as it is until combat ends.
+-- The flyout holds secure buttons, so this code only animates it out of combat; in combat secure snippets show and hide it.
 local progress, target = 0, 0
 local readApplied = true      -- read weapon enchants on the next frame (an enchant event, opening, a setting)
 local overTime, outTime = 0, 0
@@ -345,24 +347,24 @@ local function FinishAnimation()
     if target == 0 then fly:Hide() end
 end
 
--- ponytail: the flyout opens and closes only out of combat, since it holds secure buttons.
--- Secure handlers (SecureHandlerWrapScript showing it from OnEnter/OnClick) would allow opening it mid-fight.
+-- Out of combat only, since the flyout holds secure buttons; in combat the snippets below (SetupCombatOpen) open it.
 local function SetOpen(open)
     if InCombatLockdown() or (open and shown == 0) then return end
     target = open and 1 or 0
     if open then
         fly:Show()
-        TrackApplied()
+        TrackApplied()   -- now, so an instant open never shows the last glow for a frame
     end
     if Get("animation") == "instant" then FinishAnimation() end
 end
 
 -- Poison effects. Particles are tiny frames animated by AnimationGroups (no per-frame Lua).
--- The bubble art is EllesmereUI's circle shape, tinted.
+-- The bubble art is EllesmereUI's circle shape, tinted; standalone, the game's round portrait mask.
 local BUBBLES, DROPLETS, SPARKLES = 6, 10, 5
 local SPLASH_TIME = 0.5   -- seconds the splash plays
 local TIMER_SLACK = 0.05  -- keeps a timer from landing on the edge of the window it ends
 local SPARKLE_ART = "Interface\\Cooldown\\star4"
+local CIRCLE_ART = EUI.SHAPE_MASKS.circle or "Interface\\CharacterFrame\\TempPortraitAlphaMask"
 local fx = { bubbles = {}, droplets = {}, sparkles = {} }
 
 local function Particle(parent, size, art)
@@ -371,7 +373,7 @@ local function Particle(parent, size, art)
     f:SetAlpha(0)
     local t = f:CreateTexture(nil, "OVERLAY")
     t:SetAllPoints()
-    t:SetTexture(art or EUI.SHAPE_MASKS.circle)
+    t:SetTexture(art or CIRCLE_ART)
     t:SetBlendMode("ADD")
     f.tex = t
     local ag = f:CreateAnimationGroup()
@@ -569,6 +571,8 @@ local GLOW_OUTSET = 1.12      -- glow art size relative to the icon art
 local GLOW_STYLES = { static = "Static", pulse = "Pulse" }
 local GLOW_STYLE_ORDER = { "static", "pulse" }
 local GLOW_LOW = 0.35                             -- share of the glow's opacity at the bottom of a pulse
+-- Standalone: the action bar's quality border, which Blizzard draws at 62 units around a 36 unit button.
+local GLOW_FALLBACK, GLOW_FALLBACK_VISIBLE = "Interface\\Buttons\\UI-ActionButton-Border", 36 / 62
 
 -- The secret-value guard: restricted enchant info reads as nothing applied.
 local function Readable(v) return not (issecretvalue and issecretvalue(v)) end
@@ -663,6 +667,7 @@ local function UpdateApplied()
     local artKey = EUI.SHAPE_BORDERS[shape] and shape or "square"
     local art = EUI.SHAPE_BORDERS[artKey]
     local visible = (128 - 2 * (EUI.SHAPE_INSETS[artKey] or 17)) / 128
+    if not art then art, visible = GLOW_FALLBACK, GLOW_FALLBACK_VISIBLE end   -- standalone: no eUI shape art
     for i = 1, shown do
         local b = buttons[i]
         -- ponytail: by type, so every listed rank of the applied type glows, and types sharing an icon glow together.
@@ -974,8 +979,100 @@ local function SavedPoint()
     end
 end
 
+-- In combat the add-on's code may not show the flyout, since it holds secure buttons, so the button carries
+-- restricted snippets that do: a click toggles it, and in Hover mode hovering opens it. The game's secure auto-hide
+-- closes it once the mouse has left both for the Hide Delay, unless a clicked flyout is set to stay open.
+-- It opens instantly, with the list as combat found it. Out of combat the snippets do nothing and the animated
+-- code above runs. Attributes are set out of combat (ArmCombatOpen), as protected frames require.
+local EndDrag   -- Shift-drag's end, defined with ShiftDrag below
+local AUTOHIDE_MIN = 0.25   -- seconds; the gap between the button and the flyout is outside both, so never 0
+
+local COMBAT_OPEN = [[
+    local fly = self:GetFrameRef("fly")
+    if fly:IsShown() or (self:GetAttribute("count") or 0) == 0 then return end
+    fly:Show()
+    local ttl = self:GetAttribute("autoHide")
+    if ttl then
+        fly:RegisterAutoHide(ttl)
+        fly:AddToAutoHide(self)
+    end
+]]
+
+local function SetupCombatOpen()
+    SecureHandlerSetFrameRef(main, "fly", fly)
+    SecureHandlerWrapScript(main, "OnClick", main, [[
+        if not self:GetAttribute("combat") or button ~= "LeftButton" then return end
+        local fly = self:GetFrameRef("fly")
+        if fly:IsShown() then
+            if self:GetAttribute("hoverOpen") then return end   -- hovering keeps it open, as out of combat
+            fly:UnregisterAutoHide()
+            fly:Hide()
+            return
+        end
+    ]] .. COMBAT_OPEN)
+    SecureHandlerWrapScript(main, "OnEnter", main, [[
+        if not self:GetAttribute("combat") or not self:GetAttribute("hoverOpen") then return end
+    ]] .. COMBAT_OPEN)
+    -- The open state follows the snippets in combat, so the mouseover fade, Close After Use and the end of combat
+    -- see what is on screen. Out of combat SetOpen sets it and animates. Whatever opened it, the glow rereads the
+    -- weapons on the next frame.
+    fly:HookScript("OnShow", function()
+        readApplied = true
+        if InCombatLockdown() then progress, target = 1, 1 end
+    end)
+    -- Its own Hide only, not its parent hiding with it.
+    fly:HookScript("OnHide", function()
+        if not fly:IsShown() then progress, target = 0, 0 end
+    end)
+end
+
+local function AutoHideDelay()
+    if Get("openMode") == "click" and Get("clickClose") == "stay" then return nil end
+    return math.max(Get("closeDelay"), AUTOHIDE_MIN)
+end
+
+-- Just before combat locks the dock: hands the snippets what they need, and leaves the flyout fully open or hidden
+-- with its open look, since nothing may animate it once the fight starts.
+local function ArmCombatOpen()
+    local delay = AutoHideDelay()
+    main:SetAttribute("combat", true)
+    main:SetAttribute("count", shown)
+    main:SetAttribute("hoverOpen", Get("openMode") == "hover")
+    main:SetAttribute("autoHide", delay)
+    EndDrag()   -- a move that is ending would re-lay the dock after the auto-hide below took its rect
+    progress = 1
+    ApplyProgress()
+    -- The secure auto-hide tracks just the button and the open flyout, and only counts down once the cursor has
+    -- been inside them, so an open flyout the cursor is not over closes now.
+    local over = main:IsMouseOver() or fly:IsMouseOver()
+    if target == 1 and delay and not over then target = 0 end
+    -- Hover mode with the cursor already resting on the button: no OnEnter is coming, so it opens now.
+    if target == 0 and Get("openMode") == "hover" and shown > 0 and not holdClosed and main:IsVisible()
+        and main:IsMouseOver() then
+        target = 1
+    end
+    local open = target == 1
+    if open then
+        fly:Show()
+        if delay then
+            RegisterAutoHide(fly, delay)
+            AddToAutoHide(fly, main)
+        end
+    else
+        fly:Hide()
+        progress = 0   -- a flyout already hidden fires no OnHide
+    end
+end
+
+-- Combat over: the hooks kept the open state in step, so the add-on's code just takes the flyout back.
+local function DisarmCombatOpen()
+    main:SetAttribute("combat", false)
+    UnregisterAutoHide(fly)
+    if target == 0 then ApplyProgress() end   -- back to the closed look the next opening animates from
+end
+
 local function CreateDock()
-    main = CreateFrame("Button", "EllesmerePoisonsButton", UIParent)
+    main = CreateFrame("Button", "EllesmerePoisonsButton", UIParent, "SecureHandlerBaseTemplate")
     main:SetFrameStrata("MEDIUM")
     main:SetClampedToScreen(true)
     Decorate(main)
@@ -983,7 +1080,7 @@ local function CreateDock()
     -- The flyout (and the icons it creates later, one level above it) stays under the main button.
     -- Icons sliding out of it then pass behind the button.
     main:SetFrameLevel(20)
-    fly = CreateFrame("Frame", nil, main)
+    fly = CreateFrame("Frame", nil, main, "SecureFrameTemplate")
     fly:SetFrameLevel(10)
     fly:Hide()
     fly.bg = CreateFrame("Frame", nil, fly)
@@ -1006,6 +1103,7 @@ local function CreateDock()
         end
     end)
     main:SetScript("OnUpdate", Tick)   -- runs exactly while the dock shows
+    SetupCombatOpen()
     CreateFx()
     SavedPoint()
     Refresh(true)   -- forced: an empty first list would otherwise leave the button unsized
@@ -1018,7 +1116,81 @@ local function SetButtonSize(v)
     Layout()
 end
 
+-- Standalone stand-in for Unlock Mode: Shift-drag a handle to move its frame, out of combat; onStop saves the spot.
+-- Handles take drags only while Shift is held, so a click that wobbles a few pixels still clicks.
+-- Not user-placed, so the game's layout cache never fights the saved position.
+local dragHandles = {}   -- handle -> { frame = frame to move, onStop = saves where it landed }
+local dragging           -- the handle whose frame is moving
+local dragEvents         -- made on the first ShiftDrag, so it never runs with eUI
+
+-- Lets the handles take drags while Shift is held; never in combat, when a protected dock cannot change it.
+local function SyncDrag(shift)
+    for handle in pairs(dragHandles) do
+        if shift then handle:RegisterForDrag("LeftButton") else handle:RegisterForDrag() end
+    end
+end
+
+EndDrag = function()
+    local d = dragging and dragHandles[dragging]
+    dragging = nil
+    if not d then return end
+    d.frame:StopMovingOrSizing()
+    d.frame:SetUserPlaced(false)
+    d.onStop()   -- SavedPoint and Layout wait for combat to end themselves
+    if not InCombatLockdown() then SyncDrag(IsShiftKeyDown()) end   -- Shift may have been let go mid-drag
+end
+
+local function ShiftDrag(handle, frame, onStop)
+    if not dragEvents then
+        dragEvents = CreateFrame("Frame")
+        dragEvents:RegisterEvent("MODIFIER_STATE_CHANGED")
+        -- Fires before the lockdown starts, while a protected dock can still be stopped and have its drag turned off.
+        dragEvents:RegisterEvent("PLAYER_REGEN_DISABLED")
+        dragEvents:RegisterEvent("PLAYER_REGEN_ENABLED")
+        dragEvents:SetScript("OnEvent", function(_, event)
+            if event == "PLAYER_REGEN_DISABLED" then
+                EndDrag()
+                SyncDrag(false)
+            elseif not dragging and not InCombatLockdown() then
+                SyncDrag(IsShiftKeyDown())
+            end
+        end)
+    end
+    frame:SetMovable(true)
+    dragHandles[handle] = { frame = frame, onStop = onStop }
+    if IsShiftKeyDown() and not InCombatLockdown() then handle:RegisterForDrag("LeftButton") end
+    handle:SetScript("OnDragStart", function()
+        if InCombatLockdown() or dragging then return end
+        dragging = handle
+        frame:StartMoving()
+    end)
+    handle:SetScript("OnDragStop", function()
+        if dragging == handle then EndDrag() end
+    end)
+    -- A frame hidden mid-drag (the vendor closing, Hide When None in Bags) may never see its drag stop.
+    frame:HookScript("OnHide", function()
+        if dragging and dragHandles[dragging].frame == frame then EndDrag() end
+    end)
+end
+ns.ShiftDrag = ShiftDrag
+
+-- Back to the default spot. Options.lua offers it, since standalone there is no Unlock Mode to reset in.
+function ns.ResetPosition()
+    db.position = nil
+    SavedPoint()
+    Layout()
+end
+
 local function RegisterUnlock()
+    if ns.standalone then
+        ShiftDrag(main, main, function()
+            local x, y = main:GetCenter()
+            db.position = { point = "CENTER", relPoint = "BOTTOMLEFT", x = x, y = y }
+            SavedPoint()
+            Layout()   -- the flyout direction depends on where the button is
+        end)
+        return
+    end
     EUI:RegisterUnlockElements({
         EUI.MakeUnlockElement({
             key = ADDON, label = "Dock", group = "Poisons", order = 900,
@@ -1188,11 +1360,7 @@ local editor = NewEditor({
     end,
     label = function(name) return name end,
     isHidden = function(name) return IsHidden(GROUP_BY_NAME[name]) end,
-    toggle = function(name)
-        db.hidden = db.hidden or {}
-        db.hidden[name] = not db.hidden[name] or nil
-        Refresh(true)
-    end,
+    toggle = function(name) ns.Dock.SetHidden(name, not IsHidden(GROUP_BY_NAME[name])) end,
     move = MoveGroup,
     hint = "Drag to reorder, click to hide or show",
     empty = "No poisons, stones or oils in your bags",
@@ -1214,6 +1382,7 @@ local FX_KEYS = {
 local GLOW_KEYS = { applied = true, glowColor = true, glowStyle = true, glowSpeed = true }
 
 local function Set(key, value)
+    if not main then return end   -- not built yet: a reload in combat builds the dock once combat ends
     db[key] = value
     if key == "highestOnly" then Refresh(true) elseif LAYOUT_KEYS[key] then Layout() elseif COUNT_KEYS[key] then StyleCounts() end
     if key == "shape" then RefreshEditor() end
@@ -1363,6 +1532,25 @@ ns.SHAPES, ns.SHAPE_ORDER, ns.OUTLINES, ns.OUTLINE_ORDER = SHAPES, SHAPE_ORDER, 
 ns.db = function() return db end
 ns.Skin = function() return skin end
 
+-- What Options.lua builds the game's settings panel from.
+ns.Dock = {
+    Get = Get, Set = Set, DEFAULTS = DEFAULTS, GROUPS = GROUPS, IsHidden = IsHidden,
+    SetHidden = function(name, hidden)
+        db.hidden = db.hidden or {}
+        db.hidden[name] = hidden or nil
+        Refresh(true)
+        RefreshEditor()
+    end,
+    SIZE_MIN = SIZE_MIN, SIZE_MAX = SIZE_MAX,
+    TOOLTIPS = TOOLTIPS, TOOLTIP_ORDER = TOOLTIP_ORDER, SHAPES = SHAPES, SHAPE_ORDER = SHAPE_ORDER,
+    MAIN_ICONS = MAIN_ICONS, MAIN_ICON_ORDER = MAIN_ICON_ORDER, DIRECTIONS = DIRECTIONS, DIRECTION_ORDER = DIRECTION_ORDER,
+    OPEN_MODES = OPEN_MODES, OPEN_MODE_ORDER = OPEN_MODE_ORDER, CLICK_CLOSES = CLICK_CLOSES, CLICK_CLOSE_ORDER = CLICK_CLOSE_ORDER,
+    ANIMATIONS = ANIMATIONS, ANIMATION_ORDER = ANIMATION_ORDER, EASING_NAMES = EASING_NAMES, EASING_ORDER = EASING_ORDER,
+    GLOW_STYLES = GLOW_STYLES, GLOW_STYLE_ORDER = GLOW_STYLE_ORDER, COUNT_POINTS = COUNT_POINTS,
+    COUNT_POINT_ORDER = COUNT_POINT_ORDER, OUTLINES = OUTLINES, OUTLINE_ORDER = OUTLINE_ORDER,
+    APPLIED_HANDS = APPLIED_HANDS, APPLIED_HAND_ORDER = APPLIED_HAND_ORDER,
+}
+
 EUI.RegisterPlugin(ADDON, {
     label = "Poisons",
     modules = { {
@@ -1446,16 +1634,21 @@ events:RegisterUnitEvent("UNIT_SPELLCAST_START", "player")
 events:RegisterEvent("WEAPON_ENCHANT_CHANGED")
 events:RegisterUnitEvent("UNIT_INVENTORY_CHANGED", "player")
 events:SetScript("OnEvent", function(_, event, arg, castGUID, spellID)
-    if event == "PLAYER_LOGIN" then
+    -- The dock is protected, so a login under combat lockdown (a reload mid-fight) builds it once combat ends.
+    local login = event == "PLAYER_LOGIN" or (event == "PLAYER_REGEN_ENABLED" and not main)
+    if login and InCombatLockdown() then
+        return
+    elseif login then
         EllesmerePoisonsDB = EllesmerePoisonsDB or {}
         db = EllesmerePoisonsDB
         CreateDock()
         RegisterUnlock()
         if ns.RestockLogin then ns.RestockLogin() end
+        ns.RegisterOptions()
     elseif not main then
         return
     elseif event == "PLAYER_REGEN_DISABLED" then
-        if progress ~= target then FinishAnimation() end
+        ArmCombatOpen()
     elseif event == "UI_SCALE_CHANGED" or event == "DISPLAY_SIZE_CHANGED" then
         Layout()
     elseif event == "GET_ITEM_INFO_RECEIVED" then
@@ -1492,13 +1685,16 @@ events:SetScript("OnEvent", function(_, event, arg, castGUID, spellID)
         end
         if itemID then OnApplied(itemID, Readable(castGUID) and castGUID or nil) end
     else
-        if event == "PLAYER_REGEN_ENABLED" and positionPending then
-            SavedPoint()
-            pending = true   -- the Refresh below redoes the layout, flyout direction included
-        end
-        if event == "PLAYER_REGEN_ENABLED" and closeAfterCombat then
-            closeAfterCombat = false
-            CloseAfterUse()
+        if event == "PLAYER_REGEN_ENABLED" then
+            DisarmCombatOpen()
+            if positionPending then
+                SavedPoint()
+                pending = true   -- the Refresh below redoes the layout, flyout direction included
+            end
+            if closeAfterCombat then
+                closeAfterCombat = false
+                CloseAfterUse()
+            end
         end
         if event == "BAG_UPDATE_DELAYED" or pending then
             Refresh()

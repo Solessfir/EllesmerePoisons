@@ -2,7 +2,7 @@
 -- tooltips and messages follow eUI's language (the client's, or its own language override). Keys are the English
 -- text the code writes. On a key eUI already translates, eUI's wording wins, so shared terms read the same everywhere.
 local _, ns = ...
-local EUI = _G.EllesmereUI
+local EUI = ns.EUI
 
 local mine = {}   -- keys this add-on filled, which the game's own names may still replace
 

@@ -1,10 +1,10 @@
 # EllesmereUI Poisons
 
-**Think Poisoner + Hemlock in one addon, built into EllesmereUI.** A poison dock to apply your poisons, stones and oils, and a restock bar to refill your poisons at the vendor. Each module has its own Enable toggle, so you can run both or only one.
+**Think Poisoner + Hemlock in one addon, standalone or built into EllesmereUI.** A poison dock to apply your poisons, stones and oils, and a restock bar to refill your poisons at the vendor. Each module has its own Enable toggle, so you can run both or only one.
 
 ![Preview](Media/preview.gif)
 
-Requires **[EllesmereUI](https://www.curseforge.com/wow/addons/ellesmereui)**. Made for **WoW Forever**.
+Works on its own or with **[EllesmereUI](https://www.curseforge.com/wow/addons/ellesmereui)**, which adds its skin, more icon shapes, Unlock Mode and the full settings page. Made for **WoW Forever**.
 
 ## Dock (the Poisoner part)
 
@@ -27,7 +27,13 @@ At a poison vendor, buttons appear beside the merchant window, one for each pois
 
 ## Settings
 
-Everything lives in the EllesmereUI options, and both the dock and the restock bar move in **Unlock Mode**.
+The settings are in the game's **Options > AddOns > Ellesmere Poisons**, with Restock as its own page. With EllesmereUI installed they are also in the EllesmereUI options, and both the dock and the restock bar move in **Unlock Mode**.
+
+Without EllesmereUI, **Shift-drag** the dock button or a restock button to move it, and **Reset Position** puts it back. The Options > AddOns page has everything below except:
+- drag to reorder (a show/hide toggle per type instead)
+- the Custom button icon's name (Custom can be picked, but its icon is set on the EllesmereUI page)
+- color opacity
+- the masked icon shapes (Square, Circle, Curved Square, Diamond, Hexagon, Portrait, Shield), which use EllesmereUI's art
 
 **Dock**
 - **General:** Enable, Hide When None in Bags, Highest Rank Only, Tooltips (Full, Name Only, Off), Icon Shape (Cropped, Square, Circle, Curved Square, Diamond, Hexagon, Portrait, Shield)
@@ -51,6 +57,6 @@ Everything lives in the EllesmereUI options, and both the dock and the restock b
 ## Notes
 
 - For timers and reminders when your poisons wear off, use the **AuraBuff Reminders** module that comes with EllesmereUI.
-- Translated into German, French, Spanish, Italian, Brazilian Portuguese, Russian, Korean and Chinese (Simplified and Traditional). It follows EllesmereUI's language setting, and poison names match the game's when EllesmereUI shows your client's language.
-- The flyout can't open in combat, because the game blocks it. Prepare your weapons before the pull.
+- Translated into German, French, Spanish, Italian, Brazilian Portuguese, Russian, Korean and Chinese (Simplified and Traditional). With EllesmereUI it follows EllesmereUI's language setting, and poison names match the game's when EllesmereUI shows your client's language. Without it, it follows the client's language.
+- In combat the flyout still opens on click (and on hover in Hover mode), but instantly with no animation, and it lists what was in your bags when combat started. Open Delay and Close After Use wait until combat ends.
 - `/epoisons debug` lists what the dock sees in your bags and on each weapon, which helps with bug reports.
