@@ -377,8 +377,11 @@ local function Restock(name, inClick)
 end
 
 -- Includes the gaps between the casts of a multi-cast craft.
-local function Busy()
-    return job or opening or crafting or Casting() or C_TradeSkillUI.GetRemainingRecasts() > 0 or GetTime() < settleUntil
+-- Buying Flash Powder never touches a craft, so only a purchase still landing holds it.
+local function Busy(name)
+    if job then return true end
+    if name == FLASH then return false end
+    return opening or crafting or Casting() or C_TradeSkillUI.GetRemainingRecasts() > 0 or GetTime() < settleUntil
 end
 
 local function OnClick(self, button)
@@ -386,7 +389,7 @@ local function OnClick(self, button)
         EUI.OpenPlugin(ADDON, "Restock")
     elseif unlocked then
         return   -- a preview: away from a vendor there is nothing to buy
-    elseif Busy() then
+    elseif Busy(self.name) then
         Say(L("Still restocking."))
     elseif self.name == FLASH or Target(self.name) == 0 or Have(self.name) >= Target(self.name) or WindowReady() then
         Restock(self.name, true)
@@ -425,7 +428,7 @@ local function OnEnter(self)
     -- The same order OnClick and Restock decide in, so the line says what a click would do.
     if unlocked then
         GameTooltip:AddLine(L("Preview while Unlock Mode is open"), 0.7, 0.7, 0.7)
-    elseif Busy() then
+    elseif Busy(self.name) then
         GameTooltip:AddLine(L("Restocking..."), 0.7, 0.7, 0.7)
     elseif Target(self.name) == 0 then
         GameTooltip:AddLine(L("No target yet"), 1, 0.2, 0.33)
