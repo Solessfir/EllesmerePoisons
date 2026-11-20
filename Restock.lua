@@ -355,6 +355,11 @@ local function Restock(name, inClick)
         end
         return
     end
+    -- A Flash Powder purchase can still be landing, as it does not wait for crafts.
+    if job then
+        Say(L("Still restocking."))
+        return
+    end
     local why = BuyAll(wants)
     if why then
         Say(why)
@@ -377,9 +382,9 @@ local function Restock(name, inClick)
 end
 
 -- Includes the gaps between the casts of a multi-cast craft.
--- Buying Flash Powder never touches a craft, so only a purchase still landing holds it.
+-- Flash Powder ignores crafts and a poison craft ignores a Flash Powder purchase; purchases still go one at a time.
 local function Busy(name)
-    if job then return true end
+    if job and (name == FLASH or job.name ~= FLASH) then return true end
     if name == FLASH then return false end
     return opening or crafting or Casting() or C_TradeSkillUI.GetRemainingRecasts() > 0 or GetTime() < settleUntil
 end
@@ -393,6 +398,8 @@ local function OnClick(self, button)
         Say(L("Still restocking."))
     elseif self.name == FLASH or Target(self.name) == 0 or Have(self.name) >= Target(self.name) or WindowReady() then
         Restock(self.name, true)
+    elseif job and ranks[self.name] and next(Plan(self.name, Target(self.name) - Have(self.name)) or {}) then
+        Say(L("Still restocking."))   -- Flash Powder is landing and this needs a purchase too: no point opening the window
     else
         -- Crafting needs the Poisons window. Opening it takes a moment, past this click, so a craft then waits for the next one.
         WithWindow(function()
